@@ -16,8 +16,8 @@ private:
 
 	double fixedAspectRatio;
 
-	void moveEvent(QMoveEvent *event);
-	void resizeEvent(QResizeEvent *event);
+	void moveEvent(QMoveEvent *event) override;
+	void resizeEvent(QResizeEvent *event) override;
 
 public:
 	OBSSourceWidget(QWidget *parent);
@@ -28,6 +28,9 @@ public:
 	void setSource(obs_source_t *source);
 
 	void resizeSourceView();
+
+protected:
+	bool eventFilter(QObject *obj, QEvent *event) override;
 };
 
 class OBSSourceWidgetView : public OBSQTDisplay {

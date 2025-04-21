@@ -8,6 +8,7 @@
 #include <qt-wrappers.hpp>
 
 #include <QScreen>
+#include <QScrollArea>
 #include <QWindow>
 
 #include "moc_OBSSourceWidget.cpp"
@@ -19,6 +20,32 @@ OBSSourceWidget::OBSSourceWidget(QWidget *parent) : QFrame(parent), fixedAspectR
 
 	layout->setContentsMargins(0, 0, 0, 0);
 	setMinimumSize(QSize(240, 135));
+
+	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+
+	if (window()) {
+		window()->installEventFilter(this);
+	}
+
+	if (parent) {
+		parent->installEventFilter(this);
+	}
+
+	QObject *checkParent = parent;
+
+	while (checkParent) {
+		QScrollArea *scrollParent = qobject_cast<QScrollArea *>(checkParent);
+		if (scrollParent && scrollParent->widget()) {
+			scrollParent->widget()->installEventFilter(this);
+		}
+
+		if (!checkParent->parent() || checkParent->parent() == checkParent) {
+			blog(LOG_INFO, "Parent loop");
+			break;
+		}
+
+		checkParent = checkParent->parent();
+	}
 }
 
 OBSSourceWidget::OBSSourceWidget(QWidget *parent, obs_source_t *source) : OBSSourceWidget(parent)
@@ -81,29 +108,46 @@ void OBSSourceWidget::resizeSourceView()
 			setMaximumWidth(scaledWidth);
 		}
 	}
+
+	QWindow *nativeWindow = sourceView->windowHandle();
+	QRegion visible = sourceView->visibleRegion();
+	if (nativeWindow) {
+		QPoint position = sourceView->mapTo(sourceView->nativeParentWidget(), QPoint());
+		nativeWindow->setGeometry(QRect(position, sourceView->geometry().size()));
+
+		if (!visible.isNull()) {
+			if (visible.boundingRect().width() > 0 && visible.boundingRect().height() > 0) {
+				nativeWindow->setMask(visible.boundingRect());
+			}
+		} else {
+			nativeWindow->setMask(QRegion(0, 0, 1, 1));
+		}
+	}
+}
+
+bool OBSSourceWidget::eventFilter(QObject *obj, QEvent *event)
+{
+	UNUSED_PARAMETER(obj);
+
+	if (event->type() == QEvent::Resize) {
+		resizeSourceView();
+	} else if (event->type() == QEvent::Move) {
+		resizeSourceView();
+	}
+
+	return false;
 }
 
 void OBSSourceWidget::moveEvent(QMoveEvent *event)
 {
-	resizeSourceView();
-
-	if (sourceView) {
-		QWindow *nativeWindow = sourceView->windowHandle();
-
-		if (nativeWindow) {
-			QPoint position = sourceView->mapTo(sourceView->nativeParentWidget(), QPoint());
-
-			nativeWindow->setGeometry(QRect(position, sourceView->geometry().size()));
-		}
-	}
-
 	QFrame::moveEvent(event);
+	resizeSourceView();
 }
 
 void OBSSourceWidget::resizeEvent(QResizeEvent *event)
 {
-	resizeSourceView();
 	QFrame::resizeEvent(event);
+	resizeSourceView();
 }
 
 OBSSourceWidget::~OBSSourceWidget() {}
