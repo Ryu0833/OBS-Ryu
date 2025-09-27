@@ -77,6 +77,7 @@ extern string opt_starting_profile;
 
 #ifndef _WIN32
 int OBSApp::sigintFd[2];
+int OBSApp::sigtermFd[2];
 #endif
 
 // GPU hint exports for AMD/NVIDIA laptops
@@ -928,9 +929,14 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 	socketpair(AF_UNIX, SOCK_STREAM, 0, sigintFd);
 	snInt = new QSocketNotifier(sigintFd[1], QSocketNotifier::Read, this);
 	connect(snInt, &QSocketNotifier::activated, this, &OBSApp::ProcessSigInt);
-#else
-	connect(qApp, &QGuiApplication::commitDataRequest, this, &OBSApp::commitData, Qt::DirectConnection);
+
+	/* Handle SIGTERM */
+	socketpair(AF_UNIX, SOCK_STREAM, 0, sigtermFd);
+	snTerm = new QSocketNotifier(sigtermFd[1], QSocketNotifier::Read, this);
+	connect(snTerm, &QSocketNotifier::activated, this, &OBSApp::ProcessSigTerm);
 #endif
+	connect(qApp, &QGuiApplication::commitDataRequest, this, &OBSApp::commitData, Qt::DirectConnection);
+
 	if (multi) {
 		crashHandler_ = std::make_unique<OBS::CrashHandler>();
 	} else {
@@ -1810,6 +1816,14 @@ void OBSApp::SigIntSignalHandler(int s)
 	char a = 1;
 	send(sigintFd[0], &a, sizeof(a), 0);
 }
+
+void OBSApp::SigTermSignalHandler(int s)
+{
+	UNUSED_PARAMETER(s);
+
+	char a = 1;
+	send(sigtermFd[0], &a, sizeof(a), 0);
+}
 #endif
 
 void OBSApp::ProcessSigInt(void)
@@ -1828,15 +1842,33 @@ void OBSApp::ProcessSigInt(void)
 #endif
 }
 
-#ifdef _WIN32
+void OBSApp::ProcessSigTerm(void)
+{
+#ifndef _WIN32
+	char tmp;
+	recv(sigtermFd[1], &tmp, sizeof(tmp), 0);
+
+	OBSBasic *main = OBSBasic::Get();
+	if (main) {
+		main->saveAll();
+	}
+
+	quit();
+#endif
+}
+
 void OBSApp::commitData(QSessionManager &manager)
 {
 	OBSBasic *main = OBSBasic::Get();
 	if (main) {
 		main->saveAll();
+
+		if (manager.allowsInteraction() && main->shouldPromptForClose()) {
+			blog(LOG_INFO, "[OBSApp] SessionManager::cancel()");
+			manager.cancel();
+		}
 	}
 }
-#endif
 
 void OBSApp::applicationShutdown() noexcept
 {
@@ -1848,6 +1880,10 @@ void OBSApp::applicationShutdown() noexcept
 	delete snInt;
 	close(sigintFd[0]);
 	close(sigintFd[1]);
+
+	delete snTerm;
+	close(sigtermFd[0]);
+	close(sigtermFd[1]);
 #endif
 
 #ifdef __APPLE__

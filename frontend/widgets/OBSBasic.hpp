@@ -329,11 +329,11 @@ public:
 	void SetDisplayAffinity(QWindow *window);
 
 	void saveAll();
+	bool shouldPromptForClose();
 	inline bool isClosing() { return isClosing_; }
 
 protected:
 	bool isReadyToClose();
-	bool shouldPromptForClose();
 	bool promptToClose();
 	void closeWindow();
 

@@ -858,13 +858,22 @@ int main(int argc, char *argv[])
 #ifndef _WIN32
 	signal(SIGPIPE, SIG_IGN);
 
-	struct sigaction sig_handler;
+	struct sigaction sigint_handler;
 
-	sig_handler.sa_handler = OBSApp::SigIntSignalHandler;
-	sigemptyset(&sig_handler.sa_mask);
-	sig_handler.sa_flags = 0;
+	sigint_handler.sa_handler = OBSApp::SigIntSignalHandler;
+	sigemptyset(&sigint_handler.sa_mask);
+	sigint_handler.sa_flags = 0;
 
-	sigaction(SIGINT, &sig_handler, NULL);
+	sigaction(SIGINT, &sigint_handler, NULL);
+
+	struct sigaction sigterm_handler;
+
+	sigterm_handler.sa_handler = OBSApp::SigTermSignalHandler;
+	sigemptyset(&sigterm_handler.sa_mask);
+	sigterm_handler.sa_flags = 0;
+
+	sigaction(SIGTERM, &sigterm_handler, NULL);
+	sigaction(SIGHUP, &sigterm_handler, NULL);
 
 	/* Block SIGPIPE in all threads, this can happen if a thread calls write on
 	a closed pipe. */
