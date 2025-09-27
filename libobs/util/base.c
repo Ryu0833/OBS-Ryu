@@ -83,6 +83,15 @@ void base_set_log_handler(log_handler_t handler, void *param)
 
 void base_set_crash_handler(void (*handler)(const char *, va_list, void *), void *param)
 {
+	static bool non_default_handler_set = false;
+
+	if (non_default_handler_set) {
+		blog(LOG_ERROR, "Tried to set a crash handler when one already exists. "
+				"This is unsupported.");
+		return;
+	}
+
+	non_default_handler_set = true;
 	crash_param = param;
 	crash_handler = handler;
 }
