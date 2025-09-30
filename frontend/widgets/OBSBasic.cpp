@@ -1373,7 +1373,9 @@ void OBSBasic::OnFirstLoad()
 
 OBSBasic::~OBSBasic()
 {
+	blog(LOG_INFO, "[OBSBasic] Destructor");
 	if (!isClosing()) {
+		blog(LOG_INFO, "[OBSBasic] Destructor calling closeWindow");
 		closeWindow();
 	}
 }
@@ -1685,6 +1687,7 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 		restart = false;
 
 		if (!isClosePromptOpen) {
+			blog(LOG_INFO, "[OBSBasic] Prompting for close");
 			bool shouldClose = promptToClose();
 
 			if (shouldClose) {
@@ -1700,6 +1703,7 @@ void OBSBasic::closeEvent(QCloseEvent *event)
 		return;
 	}
 
+	blog(LOG_INFO, "[OBSBasic] closeEvent calling closeWindow");
 	closeWindow();
 }
 

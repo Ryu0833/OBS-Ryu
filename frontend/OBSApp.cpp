@@ -955,6 +955,7 @@ OBSApp::OBSApp(int &argc, char **argv, profiler_name_store_t *store)
 
 OBSApp::~OBSApp()
 {
+	blog(LOG_INFO, "[OBSApp] Destructor");
 	if (libobs_initialized) {
 		applicationShutdown();
 	}
@@ -1807,6 +1808,7 @@ bool WindowPositionValid(QRect rect)
 #ifndef _WIN32
 void OBSApp::SigIntSignalHandler(int s)
 {
+	blog(LOG_INFO, "[OBSApp] SigIntSignalHandler");
 	/* Handles SIGINT and writes to a socket. Qt will read
 	 * from the socket in the main thread event loop and trigger
 	 * a call to the ProcessSigInt slot, where we can safely run
@@ -1819,6 +1821,8 @@ void OBSApp::SigIntSignalHandler(int s)
 
 void OBSApp::SigTermSignalHandler(int s)
 {
+	blog(LOG_INFO, "[OBSApp] SigTermSignalHandler");
+
 	UNUSED_PARAMETER(s);
 
 	char a = 1;
@@ -1831,6 +1835,8 @@ void OBSApp::ProcessSigInt(void)
 	/* This looks weird, but we can't ifdef a Qt slot function so
 	 * the SIGINT handler simply does nothing on Windows. */
 #ifndef _WIN32
+	blog(LOG_INFO, "[OBSApp] ProcessSigInt");
+
 	char tmp;
 	recv(sigintFd[1], &tmp, sizeof(tmp), 0);
 
@@ -1845,6 +1851,8 @@ void OBSApp::ProcessSigInt(void)
 void OBSApp::ProcessSigTerm(void)
 {
 #ifndef _WIN32
+	blog(LOG_INFO, "[OBSApp] ProcessSigTerm");
+
 	char tmp;
 	recv(sigtermFd[1], &tmp, sizeof(tmp), 0);
 
@@ -1861,6 +1869,7 @@ void OBSApp::commitData(QSessionManager &manager)
 {
 	OBSBasic *main = OBSBasic::Get();
 	if (main) {
+		blog(LOG_INFO, "[OBSApp] commitData");
 		main->saveAll();
 
 		if (manager.allowsInteraction() && main->shouldPromptForClose()) {
@@ -1897,6 +1906,7 @@ void OBSApp::applicationShutdown() noexcept
 	os_inhibit_sleep_destroy(sleepInhibitor);
 
 	if (libobs_initialized) {
+		blog(LOG_INFO, "[OBSApp] Calling obs_shutdown");
 		obs_shutdown();
 		libobs_initialized = false;
 	}
