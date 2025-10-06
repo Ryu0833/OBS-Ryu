@@ -640,8 +640,8 @@ static int compare_framerates(gconstpointer a, gconstpointer b)
 	return da - db;
 }
 
-static void framerate_list(struct camera_device *dev, uint32_t pixelformat, const struct spa_rectangle *resolution,
-			   obs_property_t *prop)
+static size_t framerate_list(struct camera_device *dev, uint32_t pixelformat, const struct spa_rectangle *resolution,
+			     obs_property_t *prop)
 {
 	g_autoptr(GArray) framerates = NULL;
 	struct param *p;
@@ -737,6 +737,8 @@ static void framerate_list(struct camera_device *dev, uint32_t pixelformat, cons
 		dstr_free(&str);
 	}
 	obs_data_release(data);
+
+	return framerates->len;
 }
 
 static bool parse_framerate(struct spa_fraction *dest, const char *json)
@@ -843,7 +845,14 @@ static bool format_selected(void *data, obs_properties_t *properties, obs_proper
 	}
 
 	property = obs_properties_get(properties, "framerate");
-	framerate_list(device, camera_source->format.spa_format, &camera_source->resolution.rect, property);
+
+	bool has_framerates =
+		framerate_list(device, camera_source->format.spa_format, &camera_source->resolution.rect, property);
+
+	obs_property_set_visible(property, has_framerates);
+
+	if (!has_framerates)
+		obs_pipewire_stream_set_framerate(camera_source->obs_pw_stream, NULL);
 
 	return true;
 }
