@@ -629,6 +629,7 @@ struct roi_params {
 	amf_uint32 *buf;
 };
 
+/* Double buffering version */
 static void roi_cb(void *param, obs_encoder_roi *roi)
 {
 	const roi_params *rp = static_cast<roi_params *>(param);
@@ -683,8 +684,10 @@ static void create_roi(amf_base *enc, AMFSurface **roi_map)
 	obs_encoder_enum_roi(enc->encoder, roi_cb, &par);
 }
 
+static std::mutex roi_mutex;
 static void add_roi(amf_base *enc, AMFSurface *amf_surf)
 {
+	std::lock_guard<std::mutex> lock(roi_mutex);
 	const uint32_t increment = obs_encoder_get_roi_increment(enc->encoder);
 
 	/* Double buffering logic: roi_map_a / roi_map_b */
